@@ -89,7 +89,7 @@ unsafe extern "C" fn ngx_http_gdpr_body_filter(
             (*new_chain.buf).set_memory(1);
             out = &mut new_chain as *mut _;
             // now we need to replace content-length
-            if !(*r).header_sent() == 1 {
+            if (*r).header_sent() != 1 {
                 (*r).headers_out.content_length_n = (body.len() * size_of::<u_char>()) as i64;
             }
         }
@@ -104,11 +104,11 @@ unsafe extern "C" fn ngx_http_gdpr_body_filter(
 struct GDPRRepl;
 impl Replacer for GDPRRepl {
     fn replace_append(&mut self, caps: &Captures<'_>, dst: &mut String) {
-        (0..caps[1].len()).for_each(|_| {dst.push('*')});
+        (0..caps[1].len()).for_each(|_| dst.push('*'));
         dst.push('@');
-        (0..caps[2].len()).for_each(|_| {dst.push('*')});
+        (0..caps[2].len()).for_each(|_| dst.push('*'));
         dst.push('.');
-        (0..caps[3].len()).for_each(|_| {dst.push('*')});
+        (0..caps[3].len()).for_each(|_| dst.push('*'));
     }
 }
 fn replace_emails(data: &mut Vec<u_char>) -> bool {
