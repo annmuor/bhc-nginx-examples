@@ -2,7 +2,7 @@ use anyhow::bail;
 use ngx::core::Status;
 use ngx::ffi::{
     MAP_SHARED, NGX_HTTP_MODULE, NGX_HTTP_SPECIAL_RESPONSE, NGX_LOG_ERR, NGX_LOG_NOTICE,
-    NGX_LOG_WARN, PROT_READ, mmap, munmap, ngx_array_push, ngx_command_t, ngx_conf_t,
+    NGX_LOG_WARN, PROT_READ, ngx_array_push, ngx_command_t, ngx_conf_t,
     ngx_http_handler_pt, ngx_http_module_t, ngx_http_phases_NGX_HTTP_ACCESS_PHASE,
     ngx_http_read_client_request_body, ngx_http_request_t, ngx_int_t, ngx_module_t,
 };
@@ -43,18 +43,18 @@ impl Drop for BodySegment<'_> {
     fn drop(&mut self) {
         if self.unmap {
             unsafe {
-                let size = self.data.len() * size_of::<u8>();
+                let size = std::mem::size_of_val(self.data);
                 let addr = self.data.as_ptr();
-                munmap(addr as *const _ as *mut _, size);
+                libc::munmap(addr as *const _ as *mut _, size);
             }
         }
     }
 }
+
 fn extract_body(r: &'_ ngx_http_request_t) -> anyhow::Result<Vec<BodySegment<'_>>> {
-    if r.request_body.is_null() {
+    let Some(request_body) = (unsafe { r.request_body.as_ref() }) else {
         bail!("Body is null");
-    }
-    let request_body = unsafe { &*r.request_body };
+    };
     let mut buf_chain = unsafe { &*request_body.bufs };
     let mut result = Vec::new();
     loop {
@@ -77,20 +77,20 @@ fn extract_body(r: &'_ ngx_http_request_t) -> anyhow::Result<Vec<BodySegment<'_>
                 let file = unsafe { &*current_buf.file };
                 let size = (current_buf.file_last - current_buf.file_pos) as usize;
                 let mmaped_data = unsafe {
-                    mmap(
+                    libc::mmap(
                         null_mut(),
                         size,
                         PROT_READ as i32,
                         MAP_SHARED as i32,
                         file.fd,
                         0,
-                    ) as *const u8
+                    )
                 };
-                if mmaped_data.is_null() {
+                if mmaped_data == libc::MAP_FAILED {
                     bail!("Mmap failed");
                 }
                 BodySegment {
-                    data: unsafe { from_raw_parts(mmaped_data, size) },
+                    data: unsafe { from_raw_parts(mmaped_data as *const u8, size) },
                     unmap: true,
                 }
             }
