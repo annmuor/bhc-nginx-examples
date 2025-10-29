@@ -55,7 +55,9 @@ fn extract_body(r: &'_ ngx_http_request_t) -> anyhow::Result<Vec<BodySegment<'_>
     let Some(request_body) = (unsafe { r.request_body.as_ref() }) else {
         bail!("Body is null");
     };
-    let mut buf_chain = unsafe { &*request_body.bufs };
+    let  Some(mut buf_chain) = (unsafe { request_body.bufs.as_ref() }) else {
+        return Ok(Vec::new());
+    };
     let mut result = Vec::new();
     loop {
         if buf_chain.buf.is_null() {
