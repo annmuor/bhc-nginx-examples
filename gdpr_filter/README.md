@@ -20,7 +20,7 @@ curl 127.0.0.1:8080
 # filtered
 curl 127.0.0.1:8081
 ```
-
+![x](image.gif)
 # How to play with the code
 In the [lib.rs](src/lib.rs) you may find the body filter:
 

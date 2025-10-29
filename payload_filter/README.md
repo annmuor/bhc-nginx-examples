@@ -18,6 +18,7 @@ curl 127.0.0.1:8080 --data='hello,world'
 curl 127.0.0.1:8080 --data='DEADBEEF'
 ```
 
+![image](image.gif)
 # How to play with the code
 In the [lib.rs](src/lib.rs) you may find the functions to read the body:
 
